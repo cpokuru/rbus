@@ -204,7 +204,7 @@ func decodeRbusValue(d *mpDec, valueType int32) (interface{}, error) {
 		case TR181_UINT:
 			// Parse string to uint32
 			var val uint32
-			fmt.Sscanf(s, "%u", &val)
+			fmt.Sscanf(s, "%d", &val)
 			return val, nil
 		case TR181_BOOLEAN:
 			// Parse string to bool

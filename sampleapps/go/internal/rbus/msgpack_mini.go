@@ -112,19 +112,36 @@ func (d *mpDec) readStrBytes() ([]byte, error) {
 		return nil, err
 	}
 	var n int
+	
+	// Handle fixstr (0xa0-0xbf)
 	if t >= mpFixStr && t <= mpFixStr+31 {
 		n = int(t - mpFixStr)
-	} else if t == mpStr8 {
+	} else if t == mpStr8 {  // str8 (0xd9)
 		b, _ := d.readByte()
 		n = int(b)
+	} else if t == 0xc4 {  // bin8 (NEW: handle binary format)
+		b, _ := d.readByte()
+		n = int(b)
+	} else if t == 0xc5 {  // bin16 (NEW: handle binary format)
+		_, err := io.ReadFull(d.r, d.buf[:2])
+		if err != nil {
+			return nil, err
+		}
+		n = int(binary.BigEndian.Uint16(d.buf[:2]))
+	} else if t == 0xc6 {  // bin32 (NEW: handle binary format)
+		_, err := io.ReadFull(d.r, d.buf[:4])
+		if err != nil {
+			return nil, err
+		}
+		n = int(binary.BigEndian.Uint32(d.buf[:4]))
 	} else {
 		return nil, fmt.Errorf("msgpack: unexpected str type 0x%02x", t)
 	}
+	
 	b := make([]byte, n)
 	_, err = io.ReadFull(d.r, b)
 	return b, err
 }
-
 func (d *mpDec) readInt32() (int32, error) {
 	t, err := d.readByte()
 	if err != nil {
