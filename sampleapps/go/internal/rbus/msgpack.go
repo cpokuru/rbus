@@ -180,6 +180,36 @@ func DecodeGetResponse(payload []byte) (status int32, paramName string, value in
 	}
 	return status, paramName, value, nil
 }
+// DecodeGetResponseWithType parses get response and returns the type code too
+func DecodeGetResponseWithType(payload []byte) (status int32, paramName string, value interface{}, valueType int32, err error) {
+	d := &mpDec{r: bytes.NewReader(payload)}
+
+	status, err = d.readInt32()
+	if err != nil {
+		return 0, "", nil, 0, err
+	}
+	hasData, err := d.readInt32()
+	if err != nil {
+		return 0, "", nil, 0, err
+	}
+	if hasData == 0 {
+		return status, "", nil, 0, nil
+	}
+	name, err := d.readStr()
+	if err != nil {
+		return 0, "", nil, 0, err
+	}
+	paramName = trimNull(name)
+	vt, err := d.readInt32()
+	if err != nil {
+		return 0, "", nil, 0, err
+	}
+	value, err = decodeRbusValue(d, vt)
+	if err != nil {
+		return 0, "", nil, 0, err
+	}
+	return status, paramName, value, vt, nil
+}
 
 
 func decodeRbusValue(d *mpDec, valueType int32) (interface{}, error) {

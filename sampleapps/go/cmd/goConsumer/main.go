@@ -24,20 +24,22 @@ var defaultParamNames = []string{
 	"Device.SampleProvider.SampleData.UIntData",
 }
 
-func valueTypeString(v interface{}) string {
-	switch v.(type) {
-	case string:
+func valueTypeString(typeCode int32) string {
+	switch typeCode {
+	case rbus.RBUS_STRING, rbus.TR181_STRING:
 		return "string"
-	case int32:
+	case rbus.RBUS_INT32, rbus.RBUS_INT8, rbus.RBUS_INT16, rbus.RBUS_INT64, rbus.TR181_INT:
 		return "int32"
-	case uint32:
+	case rbus.RBUS_UINT32, rbus.RBUS_BYTE, rbus.RBUS_UINT8, rbus.RBUS_UINT16, rbus.RBUS_UINT64, rbus.TR181_UINT:
 		return "uint32"
-	case bool:
+	case rbus.RBUS_BOOLEAN, rbus.TR181_BOOLEAN:
 		return "boolean"
-	case float32:
+	case rbus.RBUS_SINGLE:
 		return "float"
-	case float64:
+	case rbus.RBUS_DOUBLE:
 		return "double"
+	case rbus.RBUS_DATETIME, rbus.TR181_DATETIME:
+		return "dateTime"
 	default:
 		return "unknown"
 	}
@@ -99,7 +101,7 @@ func main() {
 
 		select {
 		case resp := <-ch:
-			status, paramName, value, err := rbus.DecodeGetResponse(resp)
+			status, paramName, value, valueType, err := rbus.DecodeGetResponseWithType(resp)
 			if err != nil {
 				log.Printf("goConsumer: decode response [%s]: %v", name, err)
 				continue
@@ -125,10 +127,10 @@ func main() {
 				case 5:
 					fmt.Printf("UIntData = [%v]\n", value)
 				default:
-					fmt.Printf("Parameter %d:\n\tName  : %s\n\tType  : %s\n\tValue : %v\n", i+1, paramName, valueTypeString(value), value)
+					fmt.Printf("Parameter %d:\n\tName  : %s\n\tType  : %s\n\tValue : %v\n", i+1, paramName, valueTypeString(valueType), value)
 				}
 			} else {
-				fmt.Printf("Parameter  %d:\n              Name  : %s\n              Type  : %s\n              Value : %v\n", i+1, paramName, valueTypeString(value), value)
+				fmt.Printf("Parameter  %d:\n              Name  : %s\n              Type  : %s\n              Value : %v\n", i+1, paramName, valueTypeString(valueType), value)
 			}
 		case <-time.After(5 * time.Second):
 			log.Printf("goConsumer: get [%s] timeout", name)
