@@ -7,12 +7,33 @@ import (
 )
 
 // RBus value type IDs (from rbus_value.h)
+// RBus native value type IDs (from rbus_value.h enum starting at 0x500)
 const (
-	RBUS_STRING  = 0x50E
-	RBUS_INT32   = 0x507
-	RBUS_UINT32  = 0x508
-	RBUS_BOOLEAN = 0x500
-	RBUS_SINGLE  = 0x50B
+	RBUS_BOOLEAN  = 0x500
+	RBUS_CHAR     = 0x501
+	RBUS_BYTE     = 0x502
+	RBUS_INT8     = 0x503
+	RBUS_UINT8    = 0x504
+	RBUS_INT16    = 0x505
+	RBUS_UINT16   = 0x506
+	RBUS_INT32    = 0x507
+	RBUS_UINT32   = 0x508
+	RBUS_INT64    = 0x509
+	RBUS_UINT64   = 0x50A
+	RBUS_SINGLE   = 0x50B
+	RBUS_DOUBLE   = 0x50C
+	RBUS_DATETIME = 0x50D
+	RBUS_STRING   = 0x50E
+	RBUS_BYTES    = 0x50F
+)
+
+// TR-181/CWMP legacy type IDs (used by CCSP components like TR-069 PA)
+const (
+	TR181_STRING   = 0
+	TR181_INT      = 1
+	TR181_UINT     = 2
+	TR181_BOOLEAN  = 3
+	TR181_DATETIME = 4
 )
 
 const methodGetParameterValues = "METHOD_GETPARAMETERVALUES"
@@ -160,24 +181,70 @@ func DecodeGetResponse(payload []byte) (status int32, paramName string, value in
 	return status, paramName, value, nil
 }
 
+
 func decodeRbusValue(d *mpDec, valueType int32) (interface{}, error) {
+	// TR-181/CCSP components (types 0-4) encode ALL values as strings,
+	// regardless of the type code. We must read as string first, then convert.
+	if valueType >= TR181_STRING && valueType <= TR181_DATETIME {
+		s, err := d.readStr()
+		if err != nil {
+			return nil, err
+		}
+		s = trimNull(s)
+		
+		// Convert string to appropriate Go type based on type code
+		switch valueType {
+		case TR181_STRING:
+			return s, nil
+		case TR181_INT:
+			// Parse string to int32
+			var val int32
+			fmt.Sscanf(s, "%d", &val)
+			return val, nil
+		case TR181_UINT:
+			// Parse string to uint32
+			var val uint32
+			fmt.Sscanf(s, "%u", &val)
+			return val, nil
+		case TR181_BOOLEAN:
+			// Parse string to bool
+			return s == "true" || s == "1", nil
+		case TR181_DATETIME:
+			return s, nil
+		default:
+			return s, nil
+		}
+	}
+	
+	// RBus native types (0x500+) use proper MessagePack encoding
 	switch valueType {
-	case 0, RBUS_STRING:
-		// Some providers (e.g. PAM) send type 0 for string; standard is RBUS_STRING (0x50E).
+	case RBUS_STRING:
 		s, err := d.readStr()
 		return trimNull(s), err
-	case RBUS_INT32:
+		
+	case RBUS_INT32, RBUS_INT8, RBUS_INT16, RBUS_INT64:
 		return d.readInt32()
-	case RBUS_UINT32:
+		
+	case RBUS_UINT32, RBUS_BYTE, RBUS_UINT8, RBUS_UINT16, RBUS_UINT64:
 		v, err := d.readInt32()
 		return uint32(v), err
+		
 	case RBUS_BOOLEAN:
 		return d.readBool()
+		
 	case RBUS_SINGLE:
 		v, err := d.readFloat64()
 		return float32(v), err
+		
+	case RBUS_DOUBLE:
+		return d.readFloat64()
+		
+	case RBUS_DATETIME:
+		s, err := d.readStr()
+		return trimNull(s), err
+		
 	default:
-		return nil, fmt.Errorf("unsupported value type %d", valueType)
+		return nil, fmt.Errorf("unsupported value type %d (0x%x)", valueType, valueType)
 	}
 }
 
