@@ -131,7 +131,8 @@ func main() {
 	log.Printf("goSetter: setting %s = %v (%s)", paramName, value, valueType)
 
 	// Create connection with rbuscli naming
-	appName := fmt.Sprintf("rbuscli-%d", os.Getpid())
+	//appName := fmt.Sprintf("rbuscli-%d", os.Getpid())
+	appName := "rbus.goSetter"
 	conn, err := rbus.NewConn(appName, "")
 	if err != nil {
 		log.Fatal(err)
