@@ -291,9 +291,10 @@ func EncodeSetRequest(sessionId int32, componentName, paramName string, valueTyp
 
 	e.writeSmallInt(sessionId)              // sessionId (compact: fixint for 0-127)
 	e.writeStrWithNull(componentName)       // component that invokes the set
+	e.writeSmallInt(0)
 	e.writeSmallInt(1)                      // param count (compact)
 	e.writeStrWithNull(paramName)           // param name
-	e.writeUint16(uint16(valueType))
+	e.writeInt32(valueType)
 	if err := encodeRbusValue(e, valueType, value); err != nil {
 		return nil, err
 	}

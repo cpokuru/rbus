@@ -141,6 +141,7 @@ func main() {
 
 	// Create session for password/sensitive parameters
         sessionId := int32(0)
+	
 
 	// Component name matches rbuscli
 	componentName := appName
@@ -150,7 +151,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Encode SET request: %v", err)
 	}
-
+	if os.Getenv("RBUS_DEBUG") == "1" {
+		log.Printf("SET payload hex (%d bytes): %x", len(payload), payload)
+		log.Printf("  SessionId=%d Component=%q Param=%q Type=0x%x Value=%v",
+			sessionId, componentName, paramName, rbusType, value)
+	}
 	// Send SET request
 	seq, err := conn.SendSetRequest(paramName, payload)
 	if err != nil {
