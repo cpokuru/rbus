@@ -212,6 +212,31 @@ func (d *mpDec) readBool() (bool, error) {
 		return true, nil
 	case mpFalse:
 		return false, nil
+	case 0xc4: // bin8 - some components send "true"/"false" as binary
+		length, err := d.readByte()
+		if err != nil {
+			return false, err
+		}
+		b := make([]byte, length)
+		_, err = io.ReadFull(d.r, b)
+		if err != nil {
+			return false, err
+		}
+		s := trimNull(string(b))
+		return s == "true" || s == "1", nil
+	case 0xc5: // bin16
+		_, err := io.ReadFull(d.r, d.buf[:2])
+		if err != nil {
+			return false, err
+		}
+		length := binary.BigEndian.Uint16(d.buf[:2])
+		b := make([]byte, length)
+		_, err = io.ReadFull(d.r, b)
+		if err != nil {
+			return false, err
+		}
+		s := trimNull(string(b))
+		return s == "true" || s == "1", nil
 	default:
 		return false, fmt.Errorf("msgpack: expected bool, got 0x%02x", t)
 	}
