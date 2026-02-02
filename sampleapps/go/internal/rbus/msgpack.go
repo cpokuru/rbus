@@ -139,7 +139,11 @@ func encodeRbusValue(e *mpEnc, valueType int32, value interface{}) error {
 		return nil
 	case RBUS_BOOLEAN:
 		v, _ := value.(bool)
-		e.writeBool(v)
+		if v {
+			e.writeBin([]byte{0x01})  // true = binary with byte 0x01
+		} else {
+			e.writeBin([]byte{0x00})  // false = binary with byte 0x00
+		}
 		return nil
 	case RBUS_SINGLE:
 		v, _ := value.(float32)
